@@ -15,9 +15,10 @@ export function MetricsConsole() {
   const [manual, setManual] = useState(false)
   const tiltRef = useRef(null)
   const tabRefs = useRef([])
+  const panelRef = useRef(null)
 
   const metric = HERO_METRICS[index]
-  const improvement = useCountUp(metric.improvement)
+  const improvement = useCountUp(metric.improvement, panelRef)
   const afterRatio = Math.max(metric.after.value / metric.before.value, 0.02)
 
   const select = (next, focus = false) => {
@@ -99,7 +100,7 @@ export function MetricsConsole() {
           })}
         </div>
 
-        <div id="metric-panel" role="tabpanel" aria-labelledby={`metric-tab-${metric.id}`} className="p-5 sm:p-7">
+        <div ref={panelRef} id="metric-panel" role="tabpanel" aria-labelledby={`metric-tab-${metric.id}`} className="p-5 sm:p-7">
           <p className="text-sm text-muted">{metric.label}</p>
           <p className="mt-2 flex items-baseline gap-2 font-mono text-5xl font-medium tracking-tight tabular-nums sm:text-6xl">
             <span className="text-accent">−{improvement.toFixed(1)}</span>
@@ -138,7 +139,7 @@ function MetricBar({ label, value, ratio, muted = false }) {
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-white/[0.05]" aria-hidden="true">
         <div
-          className={`h-full origin-left rounded-full transition-transform duration-1000 ease-(--ease-out-expo) ${
+          className={`metric-fill h-full origin-left rounded-full transition-transform duration-1000 ease-(--ease-out-expo) ${
             muted ? 'bg-white/25' : 'bg-accent'
           }`}
           style={{ transform: `scaleX(${ratio})` }}

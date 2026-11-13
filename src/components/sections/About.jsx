@@ -1,6 +1,9 @@
 import { Award, FileText, FlaskConical, Gauge, GraduationCap, MapPin, ShieldCheck } from 'lucide-react'
-import { SITE } from '../../data/site'
+import { HERO_METRICS } from '../../data/metrics'
+import { FEATURED_PROJECTS } from '../../data/projects'
+import { SITE, STACK } from '../../data/site'
 import { trackPointer } from '../../lib/device'
+import { CountUpText } from '../ui/CountUpText'
 import { MetricsConsole } from '../ui/MetricsConsole'
 
 const PRINCIPLES = [
@@ -35,6 +38,19 @@ const FACTS = [
 // Capas de un producto que MabuDev cubre de punta a punta (texto del párrafo original).
 const LAYERS = ['Interfaz', 'API', 'Base de datos', 'Seguridad', 'Rendimiento']
 
+// Cifras de impacto: se calculan a partir de los datos del sitio (no se
+// escriben a mano) para que nunca se desincronicen de los proyectos.
+const BEST_METRIC = HERO_METRICS.reduce((best, item) => (item.improvement > best.improvement ? item : best))
+const STATS = [
+  { value: String(FEATURED_PROJECTS.length), label: 'Proyectos publicados con código abierto' },
+  { value: String(STACK.length), label: 'Tecnologías con evidencia en repositorios públicos' },
+  {
+    value: `−${BEST_METRIC.improvement} %`,
+    label: `${BEST_METRIC.label} en ${BEST_METRIC.project} (${BEST_METRIC.before.display} → ${BEST_METRIC.after.display})`,
+  },
+  { value: '100', label: 'Lighthouse en Accesibilidad, SEO y Buenas prácticas · Plan Gestor Task' },
+]
+
 // Titular partido en palabras para encenderlas una a una; `em` marca las destacadas.
 const STATEMENT = [
   ['Trato'],
@@ -56,7 +72,7 @@ export function About() {
     <section id="sobre-mabudev" aria-labelledby="about-title" className="relative py-24 sm:py-32">
       <div
         aria-hidden="true"
-        className="hero-glow pointer-events-none absolute top-0 left-1/2 -z-10 h-[40rem] w-[min(80rem,160vw)] -translate-x-1/2 bg-[radial-gradient(closest-side,rgb(76_116_255/0.1),transparent)]"
+        className="hero-glow scroll-drift pointer-events-none absolute top-0 left-1/2 -z-10 h-[40rem] w-[min(80rem,160vw)] -translate-x-1/2 bg-[radial-gradient(closest-side,rgb(76_116_255/0.1),transparent)]"
       />
 
       <div className="container-page">
@@ -65,7 +81,7 @@ export function About() {
           <div data-reveal className="lg:col-span-3">
             <p className="eyebrow inline-flex items-center gap-3">
               <span className="text-subtle">(02)</span>
-              <span aria-hidden="true" className="h-px w-8 bg-gradient-to-r from-accent to-violet" />
+              <span aria-hidden="true" className="reveal-line h-px w-8 bg-gradient-to-r from-accent to-violet" />
               Qué es {SITE.brand}
             </p>
             <p className="mt-6 max-w-xs text-sm leading-relaxed text-muted">
@@ -110,6 +126,18 @@ export function About() {
             </li>
           ))}
         </ol>
+
+        {/* Cifras que cuentan desde 0 al entrar en pantalla. */}
+        <dl data-reveal="stagger" className="mt-14 grid grid-cols-2 gap-x-6 gap-y-10 lg:mt-20 lg:grid-cols-4">
+          {STATS.map((stat) => (
+            <div key={stat.label} className="flex flex-col-reverse gap-2 border-l border-line-strong pl-4 sm:pl-5">
+              <dt className="max-w-[16rem] text-sm leading-snug text-muted">{stat.label}</dt>
+              <dd className="text-4xl font-semibold tracking-tight sm:text-5xl">
+                <CountUpText text={stat.value} />
+              </dd>
+            </div>
+          ))}
+        </dl>
 
         {/* Historia + ficha a la izquierda; evidencia medible a la derecha. */}
         <div className="mt-16 grid gap-12 lg:mt-24 lg:grid-cols-12 lg:gap-10">

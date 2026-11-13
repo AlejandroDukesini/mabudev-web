@@ -28,7 +28,7 @@ export function Process() {
         <div data-reveal className="lg:sticky lg:top-32 lg:self-start">
           <p className="eyebrow inline-flex items-center gap-3">
             <span className="text-subtle">(05)</span>
-            <span aria-hidden="true" className="h-px w-8 bg-gradient-to-r from-accent to-violet" />
+            <span aria-hidden="true" className="reveal-line h-px w-8 bg-gradient-to-r from-accent to-violet" />
             Cómo trabajo
           </p>
           <h2 id="process-title" className="mt-5 text-[2.1rem] leading-[1.04] font-semibold tracking-[-0.035em] sm:text-5xl">
@@ -69,16 +69,18 @@ export function Process() {
                   >
                     {String(index + 1).padStart(2, '0')}
                   </span>
-                  <div
-                    data-reveal
-                    className={`pt-1.5 transition-opacity duration-500 ${index === active ? '' : 'lg:opacity-75'}`}
-                  >
-                    <h3 className="text-xl font-semibold">{step.title}</h3>
-                    <p className="mt-2 leading-relaxed text-muted">{step.description}</p>
-                    <p className="mt-3 inline-flex items-center gap-2 font-mono text-xs text-fg/80">
-                      <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" />
-                      Entregable: {step.output}
-                    </p>
+                  {/* La entrada por scroll (data-reveal, clase añadida fuera de React) va en
+                      un elemento cuyo className no cambia; el atenuado del paso activo va
+                      dentro. Si compartieran elemento, React borraría .is-visible. */}
+                  <div data-reveal className="pt-1.5">
+                    <div className={`transition-opacity duration-500 ${index === active ? '' : 'lg:opacity-75'}`}>
+                      <h3 className="text-xl font-semibold">{step.title}</h3>
+                      <p className="mt-2 leading-relaxed text-muted">{step.description}</p>
+                      <p className="mt-3 inline-flex items-center gap-2 font-mono text-xs text-fg/80">
+                        <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" />
+                        Entregable: {step.output}
+                      </p>
+                    </div>
                   </div>
                 </li>
               )

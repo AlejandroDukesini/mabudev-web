@@ -23,7 +23,7 @@ export function Footer() {
             {[...NAV_LINKS, { id: 'contacto', label: 'Contacto' }].map((link) => (
               <li key={link.id}>
                 <a href={`#${link.id}`} className="inline-flex min-h-10 items-center text-muted transition-colors hover:text-fg">
-                  {link.label}
+                  <span className="link-anim">{link.label}</span>
                 </a>
               </li>
             ))}
@@ -38,9 +38,9 @@ export function Footer() {
                 target="_blank"
                 rel="noreferrer"
                 aria-label={`${social.label} (se abre en una pestaña nueva)`}
-                className="grid size-11 place-items-center rounded-full border border-line text-muted transition-colors hover:border-accent/50 hover:text-accent"
+                className="grid size-11 place-items-center rounded-full border border-line text-muted transition-[color,border-color,translate] duration-300 hover:-translate-y-0.5 hover:border-accent/50 hover:text-accent"
               >
-                <SocialIcon id={social.id} className="size-4" />
+                <SocialIcon id={social.id} className="icon-pop size-4" />
               </a>
             </li>
           ))}

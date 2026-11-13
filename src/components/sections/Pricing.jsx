@@ -1,7 +1,9 @@
 import { Check } from 'lucide-react'
 import { PRICING_CURRENCY, PRICING_NOTE, PRICING_PLANS } from '../../data/pricing'
-import { prefillContact, trackPointer } from '../../lib/device'
+import { prefillContact } from '../../lib/device'
+import { CARD_TINTS } from '../../lib/motion'
 import { ArrowIcon, Button } from '../ui/Button'
+import { GlowCard } from '../ui/GlowCard'
 import { SectionHeading } from '../ui/SectionHeading'
 
 const PLACEHOLDER = 'XXX'
@@ -21,18 +23,18 @@ export function Pricing() {
 
         <ul className="mx-auto mt-14 grid max-w-md gap-5 md:max-w-3xl md:grid-cols-2 xl:max-w-none xl:grid-cols-4">
           {PRICING_PLANS.map((plan, index) => (
-            <li
+            <GlowCard
               key={plan.id}
-              data-reveal
-              onPointerMove={trackPointer}
-              style={{ '--delay': `${index * 80}ms` }}
-              className={`card spotlight flex flex-col p-7 sm:p-8 ${
+              tint={plan.highlighted ? '#5ef2ff' : CARD_TINTS[(index + 1) % CARD_TINTS.length]}
+              style={{ '--delay': `${index * 90}ms` }}
+              className={plan.highlighted ? 'xl:-translate-y-3' : ''}
+              bodyClassName={`p-7 sm:p-8 ${
                 plan.highlighted
-                  ? 'border-accent/35 bg-[linear-gradient(180deg,rgb(76_116_255/0.08),transparent_45%),var(--color-surface)] shadow-[0_0_0_1px_rgb(94_242_255/0.12),0_30px_70px_-30px_rgb(76_116_255/0.55)] xl:-translate-y-3'
+                  ? 'border-accent/35 bg-[linear-gradient(180deg,rgb(76_116_255/0.08),transparent_45%),var(--color-surface)] shadow-[0_0_0_1px_rgb(94_242_255/0.12),0_30px_70px_-30px_rgb(76_116_255/0.55)]'
                   : ''
               }`}
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="glow-shift flex items-center justify-between gap-3">
                 <h3 className="text-lg font-semibold">{plan.name}</h3>
                 {plan.highlighted && (
                   <span className="rounded-full bg-accent-soft px-3 py-1 font-mono text-[0.65rem] tracking-wider text-accent uppercase">
@@ -40,7 +42,7 @@ export function Pricing() {
                   </span>
                 )}
               </div>
-              <p className="mt-2 min-h-12 text-sm leading-relaxed text-muted">{plan.description}</p>
+              <p className="glow-shift mt-2 min-h-12 text-sm leading-relaxed text-muted" style={{ '--s': 1 }}>{plan.description}</p>
 
               <Price plan={plan} />
 
@@ -63,7 +65,7 @@ export function Pricing() {
                   {plan.cta} <ArrowIcon />
                 </Button>
               </div>
-            </li>
+            </GlowCard>
           ))}
         </ul>
 

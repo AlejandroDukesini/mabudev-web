@@ -97,6 +97,12 @@
   }
 }
 
+@keyframes reveal-fallback-scale {
+  to {
+    scale: 1;
+  }
+}
+
 @keyframes sheen {
   to {
     background-position: -200% 0;
@@ -332,10 +338,19 @@
   transition:
     box-shadow 0.4s var(--ease-out-quart),
     color 0.3s var(--ease-out-quart),
+    translate 0.4s var(--ease-out-expo),
     scale 0.25s var(--ease-soft-spring);
 }
 
+/* Elevación sutil (translate) que no interfiere con el efecto magnético (transform). */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover:not(:disabled) {
+    translate: 0 -2px;
+  }
+}
+
 .btn:active:not(:disabled) {
+  translate: 0 0;
   scale: 0.97;
 }
 
@@ -552,6 +567,39 @@
   transition: opacity 1.2s var(--ease-out-quart);
 }
 
+/* Sin WebGL, la gota CSS no se queda quieta: su contorno se deforma despacio
+   (border-radius) y gira levemente, con ritmos distintos para no repetir. */
+@media (prefers-reduced-motion: no-preference) {
+  .metal-fallback {
+    animation:
+      metal-morph 11s ease-in-out infinite alternate,
+      metal-turn 23s ease-in-out infinite alternate;
+  }
+
+  .metal[data-gl='ready'] .metal-fallback {
+    animation: none;
+  }
+}
+
+@keyframes metal-morph {
+  33% {
+    border-radius: 58% 42% 47% 53% / 42% 56% 44% 58%;
+  }
+  66% {
+    border-radius: 41% 59% 60% 40% / 57% 41% 59% 43%;
+  }
+  100% {
+    border-radius: 52% 48% 38% 62% / 47% 60% 40% 53%;
+  }
+}
+
+@keyframes metal-turn {
+  to {
+    rotate: 24deg;
+    scale: 1.04 0.97;
+  }
+}
+
 .hero-rings {
   position: absolute;
   inset: 4%;
@@ -637,6 +685,258 @@
   from {
     transform: scaleX(0);
   }
+}
+
+/* Título: capa frontal. Además del desplazamiento por --depth se inclina en
+   3D hacia el cursor (unos pocos grados: se mueve, pero se lee). */
+.hero-tilt {
+  transform: perspective(1400px) translate3d(calc(var(--px) * var(--depth, 0) * 1px), calc(var(--py) * var(--depth, 0) * 1px), 0)
+    rotateX(calc(var(--py) * -2.5deg)) rotateY(calc(var(--px) * 3deg));
+  transform-origin: 35% 60%;
+}
+
+.split-unit {
+  display: inline-block;
+}
+
+/* Entrada por caracteres/palabras: cada pieza sube desde la máscara de su
+   línea (.intro-line tiene overflow: hidden) con su propio retraso. */
+@media (prefers-reduced-motion: no-preference) {
+  .intro-line.is-split > span {
+    animation: none;
+  }
+
+  .intro-line.is-split .split-unit {
+    animation: intro-line 1.1s var(--ease-out-expo) both;
+    animation-delay: calc(var(--d, 0.3s) + var(--i, 0) * var(--step, 0.04s));
+  }
+
+  /* Elementos flotantes: aparecen tras el título y luego flotan en bucle.
+     Usan translate/rotate (propiedades individuales) para no pisar el
+     transform del parallax (.depth). */
+  .floater {
+    animation:
+      float-in 1.4s var(--ease-out-quart) var(--in, 1.3s) both,
+      float var(--dur, 10s) ease-in-out var(--delay, 0s) infinite alternate;
+  }
+
+  /* Táctil: sin cursor, los halos derivan despacio por sí solos. */
+  @media (hover: none) {
+    .hero-halo {
+      animation: halo-drift 16s ease-in-out infinite alternate;
+    }
+  }
+}
+
+@keyframes float-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+@keyframes float {
+  from {
+    translate: 0 0;
+    rotate: 0deg;
+  }
+  to {
+    translate: var(--fx, 6px) var(--fy, -12px);
+    rotate: var(--fr, 0deg);
+  }
+}
+
+@keyframes halo-drift {
+  to {
+    translate: calc(var(--depth, 20) * 0.35px) calc(var(--depth, 20) * -0.5px);
+    scale: 1.08;
+  }
+}
+
+/* Con el hero fuera de pantalla, sus animaciones infinitas se detienen. */
+.hero[data-paused] :is(.floater, .hero-halo, .spin, .spin-rev, .marquee-track, .animate-pulse-dot) {
+  animation-play-state: paused;
+}
+
+/* Salida del hero ligada al scroll (sin JS): el contenido sube y se apaga
+   mientras el metal baja más despacio → transición con profundidad hacia
+   la sección siguiente. Navegadores sin soporte: sin efecto. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-exit {
+      animation: hero-exit linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 100%;
+    }
+
+    .hero-exit-orb {
+      animation: hero-exit-orb linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 100%;
+    }
+
+    /* Luces de fondo de las secciones: se desplazan a otra velocidad que el
+       contenido mientras se recorre la página. */
+    .scroll-drift {
+      animation: scroll-drift linear both;
+      animation-timeline: view();
+    }
+  }
+}
+
+@keyframes hero-exit {
+  to {
+    opacity: 0.1;
+    transform: translate3d(0, -12vh, 0) scale(0.97);
+  }
+}
+
+@keyframes hero-exit-orb {
+  to {
+    opacity: 0.3;
+    transform: translate3d(0, 14vh, 0) scale(0.92);
+  }
+}
+
+@keyframes scroll-drift {
+  from {
+    transform: translate3d(0, 10vh, 0);
+  }
+  to {
+    transform: translate3d(0, -10vh, 0);
+  }
+}
+
+/* ── Tarjetas interactivas (Servicios y Precios · GlowCard.jsx) ──────── */
+.glow-card {
+  --mx: 50%;
+  --my: 50%;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+}
+
+.glow-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  transition:
+    scale 0.7s var(--ease-out-expo),
+    box-shadow 0.7s var(--ease-out-quart),
+    border-color 0.5s var(--ease-out-quart);
+}
+
+/* Luz ambiental detrás de la tarjeta: gradiente del color de la tarjeta,
+   centrado cerca del cursor, difuminado y con opacidad contenida. */
+.glow-card-aura {
+  position: absolute;
+  /* Sobresale de la tarjeta para que la luz se vea alrededor de sus bordes. */
+  inset: -7% -6% -10%;
+  z-index: -1;
+  border-radius: 3rem;
+  background: radial-gradient(
+    60% 62% at var(--mx) var(--my),
+    color-mix(in srgb, var(--tint) 62%, transparent),
+    color-mix(in srgb, var(--tint) 22%, transparent) 55%,
+    transparent 80%
+  );
+  filter: blur(38px);
+  opacity: 0;
+  transition: opacity 0.8s var(--ease-out-quart);
+  pointer-events: none;
+}
+
+.glow-shift {
+  transition: translate 0.7s var(--ease-out-expo);
+  transition-delay: calc(var(--s, 0) * 45ms);
+}
+
+.glow-card-icon {
+  transition:
+    translate 0.6s var(--ease-out-expo),
+    rotate 0.6s var(--ease-out-expo),
+    box-shadow 0.6s var(--ease-out-quart);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .glow-card:hover .glow-card-body {
+    scale: 1.025;
+    border-color: color-mix(in srgb, var(--tint) 35%, transparent);
+    box-shadow:
+      0 34px 70px -34px rgb(0 0 0 / 0.95),
+      0 26px 70px -44px var(--tint);
+  }
+
+  .glow-card:hover .glow-card-aura {
+    opacity: 0.7;
+  }
+
+  .glow-card:hover .glow-shift {
+    translate: 0 -3px;
+  }
+
+  .glow-card:hover .glow-card-icon {
+    translate: 0 -2px;
+    rotate: -6deg;
+    box-shadow: 0 10px 26px -10px var(--tint);
+  }
+}
+
+/* Teclado: el foco dentro de la tarjeta la ilumina igual (sin escalar). */
+.glow-card:focus-within .glow-card-aura {
+  opacity: 0.4;
+}
+
+.glow-card:focus-within .glow-card-body {
+  border-color: color-mix(in srgb, var(--tint) 35%, transparent);
+}
+
+/* Táctil: un resplandor tenue cuando la tarjeta entra en pantalla y una
+   respuesta de presión al tocarla. */
+@media (hover: none) {
+  .glow-card.is-visible .glow-card-aura {
+    opacity: 0.16;
+  }
+
+  .glow-card:active .glow-card-body {
+    scale: 0.985;
+    transition-duration: 0.2s;
+  }
+}
+
+/* ── Microinteracciones ──────────────────────────────────────────────── */
+/* Subrayado que se dibuja de izquierda a derecha en enlaces de texto. */
+.link-anim {
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+  transition: background-size 0.5s var(--ease-out-expo);
+}
+
+:is(a, button):is(:hover, :focus-visible) .link-anim {
+  background-size: 100% 1px;
+}
+
+/* Iconos de redes: un pequeño giro al pasar el cursor. */
+.icon-pop {
+  transition:
+    rotate 0.5s var(--ease-soft-spring),
+    scale 0.5s var(--ease-soft-spring);
+}
+
+:is(a, button):is(:hover, :focus-visible) .icon-pop {
+  rotate: -8deg;
+  scale: 1.15;
+}
+
+/* Cifras que cuentan (CountUpText): la capa invisible reserva el ancho del
+   valor final y la visible se superpone, así el texto no salta. */
+.count-slot {
+  display: inline-grid;
+  justify-items: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.count-slot > * {
+  grid-area: 1 / 1;
 }
 
 /* ── Marquesina de tecnologías ───────────────────────────────────────── */
@@ -994,6 +1294,87 @@
     filter: none;
     transform: none;
   }
+
+  /* Bloque cuyos hijos entran uno detrás de otro (encabezados de sección:
+     etiqueta → título → descripción). */
+  .js [data-reveal='stagger']:not(.is-visible) {
+    opacity: 1;
+    transform: none;
+  }
+
+  .js [data-reveal='stagger'] > * {
+    transition:
+      opacity 0.9s var(--ease-out-quart),
+      transform 1.1s var(--ease-out-expo);
+    transition-delay: calc(var(--delay, 0ms) + var(--si, 0) * 110ms);
+  }
+
+  .js [data-reveal='stagger']:not(.is-visible) > * {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0);
+    animation: reveal-fallback 0s 2.5s forwards;
+  }
+
+  [data-reveal='stagger'] > :nth-child(2) {
+    --si: 1;
+  }
+  [data-reveal='stagger'] > :nth-child(3) {
+    --si: 2;
+  }
+  [data-reveal='stagger'] > :nth-child(4) {
+    --si: 3;
+  }
+  [data-reveal='stagger'] > :nth-child(n + 5) {
+    --si: 4;
+  }
+
+  /* Trazo del encabezado que se dibuja tras la etiqueta. */
+  .js [data-reveal] .reveal-line {
+    transform-origin: left;
+    transition: scale 0.9s var(--ease-out-expo) 0.25s;
+  }
+
+  .js [data-reveal]:not(.is-visible) .reveal-line {
+    scale: 0 1;
+    animation: reveal-fallback-scale 0s 2.5s forwards;
+  }
+
+  /* Separador entre secciones: la línea se dibuja desde el centro. */
+  .js [data-reveal='line']:not(.is-visible) {
+    opacity: 1;
+    transform: scaleX(0);
+  }
+
+  /* --delay aquí es el retraso del pulso, no el de la entrada. */
+  .js [data-reveal='line'] {
+    transition: transform 1.6s var(--ease-out-expo);
+    transition-delay: 0s;
+  }
+
+  /* Proyectos: la imagen se revela dentro de su marco (la sombra del marco no
+     se recorta porque el clip va en la capa interior). */
+  .js .tile[data-reveal] .tile-parallax {
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 1.4s var(--ease-out-expo);
+    transition-delay: calc(var(--delay, 0ms) + 120ms);
+  }
+
+  .js .tile[data-reveal]:not(.is-visible) .tile-parallax {
+    clip-path: inset(16% 8% 0 8%);
+    animation: reveal-fallback 0s 2.5s forwards;
+  }
+
+  /* Barras de la consola de métricas: crecen al entrar en pantalla. */
+  .js [data-reveal] .metric-fill {
+    transition:
+      transform 1s var(--ease-out-expo),
+      scale 1.4s var(--ease-out-expo) 0.3s;
+  }
+
+  .js [data-reveal]:not(.is-visible) .metric-fill {
+    scale: 0 1;
+    animation: reveal-fallback-scale 0s 2.5s forwards;
+  }
 }
 
 /* Barra de progreso de las pestañas de la consola de métricas. */
@@ -1008,6 +1389,7 @@
 
 /* ── Modo ligero: dispositivos modestos o con ahorro de datos ───────── */
 .lite .grain,
+.lite .glow-card-aura,
 .lite .hero-glow,
 .lite .hero-light,
 .lite .hero-floor,
@@ -1022,6 +1404,10 @@
 }
 
 .lite .divider::after,
+.lite .floater,
+.lite .scroll-drift,
+.lite .hero-exit,
+.lite .hero-exit-orb,
 .lite .hero-rings .spin,
 .lite .hero-rings .spin-rev {
   animation: none;

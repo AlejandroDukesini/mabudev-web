@@ -1,0 +1,506 @@
+================================================================================
+MABUDEV — DOCUMENTACIÓN DE ANIMACIONES E INTERACCIONES
+Fecha: 2026-11-13 · Rama: Principal
+Raíz del proyecto:
+C:\Users\USUARIO LENOVO\Desktop\Codigo\WSP\FRONT\Portafolio\sitio-web-coldex
+(Las rutas de este documento son relativas a esa carpeta.)
+================================================================================
+
+
+1. DIAGNÓSTICO INICIAL
+--------------------------------------------------------------------------------
+El sitio ya tenía una base de movimiento sólida y bien hecha:
+  · usePointerField: cursor interpolado (lerp + requestAnimationFrame) que
+    escribe variables CSS (--px, --py, --energy, --lx, --ly) en el hero.
+  · Capas .depth en los halos de luz y en el metal líquido (WebGL).
+  · useReveal: un IntersectionObserver para los elementos [data-reveal].
+  · Inclinación 3D en las piezas del portafolio (useTileMotion), luz
+    "spotlight" en tarjetas, botones magnéticos, marquesina, modo ligero
+    (.lite) y soporte de prefers-reduced-motion.
+
+Lo que faltaba frente al encargo:
+  · El título y el contenido del hero no participaban del parallax; no había
+    elementos flotantes ni salida del hero al hacer scroll.
+  · Ningún número contaba desde 0 (la consola de métricas mostraba el valor
+    final y solo animaba al cambiar de pestaña).
+  · Las tarjetas de servicios no crecían ni tenían luz ambiental detrás.
+  · Los encabezados de sección entraban como un solo bloque; los separadores
+    no se dibujaban; las imágenes de proyectos no tenían revelado.
+  · Pocas microinteracciones en enlaces de texto e iconos.
+
+Error estructural encontrado (ya existía antes de este trabajo):
+  · En src/components/sections/Process.jsx el elemento con data-reveal también
+    tenía un className que React cambia al cambiar el paso activo. Al
+    re-renderizar, React borraba la clase .is-visible añadida por el
+    observador → los pasos volvían a ocultarse y reaparecían 2,5 s después
+    (por el fallback CSS). Se corrigió separando ambos elementos.
+
+
+2. ARQUITECTURA ENCONTRADA
+--------------------------------------------------------------------------------
+  · Frontend: React 19 + Vite 8 + Tailwind CSS v4, en JavaScript (sin TS).
+  · El HTML se prerenderiza en el build (src/entry-server.jsx +
+    scripts/prerender.mjs) y React hidrata en el navegador (src/main.jsx).
+    Consecuencia: todo lo que se renderiza en el servidor debe mostrar el
+    contenido final; las animaciones se preparan en el navegador.
+  · Backend: Fastify + Prisma/SQLite (server/) para los leads del formulario.
+    No se modificó.
+  · Estilos: src/index.css (tokens en @theme, utilidades y bloques por
+    sección). Curvas de animación centralizadas como --ease-out-expo,
+    --ease-out-quart, --ease-in-out-quint y --ease-soft-spring.
+  · Secciones (src/components/sections): Hero → Pricing → About → Services →
+    Projects → Process → Contact.
+  · CSP: el repositorio NO define ninguna Content-Security-Policy (ni
+    _headers, ni netlify.toml, ni meta). No se añadieron scripts inline,
+    CDNs ni recursos externos; todo el movimiento nuevo es CSS + el JS del
+    bundle. Las variables CSS se escriben con element.style.setProperty
+    (CSSOM), que la CSP no bloquea.
+
+
+3. TECNOLOGÍAS UTILIZADAS
+--------------------------------------------------------------------------------
+  · CSS: transiciones, @keyframes, propiedades individuales de transformación
+    (translate / rotate / scale) para combinar efectos sin que se pisen,
+    color-mix(), y animaciones ligadas al scroll (animation-timeline: view())
+    como mejora progresiva dentro de @supports.
+  · IntersectionObserver: un observador compartido para todo lo que se
+    activa una sola vez al entrar en pantalla (reveal y contadores).
+  · requestAnimationFrame: contadores y campo del cursor (ya existente).
+  · React: solo para la estructura; ninguna animación nueva actualiza estado
+    de React por movimiento del ratón ni por frame (excepto el % de la
+    consola de métricas, ver sección 9).
+
+
+4. DEPENDENCIAS AGREGADAS Y JUSTIFICACIÓN
+--------------------------------------------------------------------------------
+  Ninguna.
+  Se evaluaron Motion/Framer Motion, GSAP + ScrollTrigger y Three.js/R3F.
+  Todo lo pedido se resuelve con CSS, IntersectionObserver y rAF, que es
+  además el enfoque que ya usaba el proyecto. Una librería solo habría
+  añadido peso (GSAP ≈ 25 KB gzip, Motion ≈ 30+ KB) sin ganar capacidad. El
+  hero ya tiene WebGL propio (metal líquido); no hacía falta otro motor 3D.
+
+  Impacto real en el bundle (vite build, medido antes y después):
+    JS : 321.02 KB (100.42 KB gzip) → 328.02 KB (102.83 KB gzip)  +2.4 KB gzip
+    CSS:  70.21 KB ( 14.48 KB gzip) →  79.45 KB ( 16.16 KB gzip)  +1.7 KB gzip
+
+
+5. ARCHIVOS CREADOS
+--------------------------------------------------------------------------------
+  src/lib/motion.js
+      Configuración de movimiento centralizada (duración y escalonado de los
+      contadores, paleta CARD_TINTS, curva easeOutExpo),
+      prefersReducedMotion() y observeOnce(): IntersectionObserver
+      compartido, con rootMargin -10 % y threshold 0 para que nada aparezca
+      tarde, y limpieza mediante la función devuelta.
+  src/components/ui/CountUpText.jsx
+      Texto cuyas cifras cuentan desde 0 hasta su valor real.
+  src/components/ui/GlowCard.jsx
+      Tarjeta interactiva con luz ambiental (Servicios y Precios).
+  src/components/ui/SplitText.jsx
+      Divide un texto en caracteres o palabras para animarlos escalonados.
+  DOCUMENTACION_ANIMACIONES_INTERACTIVAS_MABUDEV.txt (este archivo)
+
+
+6. ARCHIVOS MODIFICADOS
+--------------------------------------------------------------------------------
+  src/index.css
+      Bloques nuevos: título del hero (.hero-tilt, .split-unit), flotantes
+      (.floater, @keyframes float/float-in), deriva de halos en táctil,
+      pausa fuera de pantalla, salida del hero ligada al scroll
+      (.hero-exit, .hero-exit-orb), .scroll-drift, tarjetas interactivas
+      (.glow-card*), microinteracciones (.link-anim, .icon-pop, elevación
+      de .btn), .count-slot y variantes de reveal (stagger, line,
+      .reveal-line, revelado de imágenes, barras de métricas). Ampliado el
+      modo .lite.
+  src/components/sections/Hero.jsx
+      Título dividido y con inclinación 3D, capas de profundidad,
+      HeroFloaters, usePauseWhenHidden, contenedores de salida por scroll y
+      reajuste de los tiempos de entrada.
+  src/components/sections/About.jsx
+      Fila de cifras de impacto con contadores; trazo del encabezado; luz de
+      fondo con .scroll-drift.
+  src/components/sections/Services.jsx
+      Tarjetas convertidas a GlowCard; desplazamiento interno; chips de
+      evidencia con elevación.
+  src/components/sections/Pricing.jsx
+      Tarjetas convertidas a GlowCard (mismo lenguaje que Servicios).
+  src/components/sections/Process.jsx
+      Corrección del error de .is-visible (ver diagnóstico) y trazo del
+      encabezado.
+  src/components/sections/Projects.jsx
+      Luces de fondo con .scroll-drift.
+  src/components/sections/Contact.jsx
+      Subrayado animado en el correo, iconos que giran, elevación de las
+      redes y .scroll-drift.
+  src/components/layout/Footer.jsx
+      Subrayado animado en los enlaces, iconos que giran y elevación.
+  src/components/ui/SectionHeading.jsx
+      Entrada escalonada (etiqueta → título → descripción) y Divider que se
+      dibuja al entrar en pantalla.
+  src/components/ui/MetricsConsole.jsx
+      El % cuenta desde 0 al verse y las barras crecen.
+  src/components/ui/ProjectTile.jsx
+      La cifra de resultado cuenta desde 0; subrayado en «Ver caso completo».
+  src/hooks/useReveal.js
+      Usa el observador compartido de src/lib/motion.js.
+  src/hooks/useCountUp.js
+      Cuenta desde 0 la primera vez que el bloque entra en pantalla.
+
+  (package.json y package-lock.json ya estaban modificados antes de este
+  trabajo —subida de versión de Prisma 7.10.0 → 7.10.1—; no se tocaron.)
+
+
+7. DESCRIPCIÓN DE CADA ANIMACIÓN
+--------------------------------------------------------------------------------
+  HERO (ver sección 8).
+
+  REVELADO POR SCROLL (useReveal + CSS en index.css)
+    · data-reveal (por defecto): opacidad 0 → 1 y 24 px → 0.
+    · data-reveal="stagger": los hijos entran uno tras otro (110 ms entre
+      ellos). Se usa en todos los encabezados de sección y en las cifras de
+      impacto.
+    · .reveal-line: el trazo de la etiqueta se dibuja de izquierda a derecha.
+    · data-reveal="line": los separadores entre secciones se dibujan desde
+      el centro; después los sigue recorriendo el pulso de luz existente.
+      Así se conecta visualmente una sección con la siguiente.
+    · Proyectos: la imagen se revela dentro de su marco (clip-path) después
+      de que aparezca el marco, y la sombra no se recorta.
+    · Grupos de tarjetas: retraso escalonado con --delay (90 ms entre
+      columnas).
+    · data-reveal="words" (ya existía): el titular de «Sobre MabuDev» se
+      enciende palabra a palabra.
+    Garantías:
+    · Cada elemento se anima una sola vez: se deja de observar al revelarse
+      y no se reinicia al subir y bajar.
+    · Sin JS (sin la clase .js en <html>) nada se oculta. Si el JS falla, un
+      fallback CSS lo muestra a los 2,5 s. Con movimiento reducido no se
+      oculta nada.
+
+  TRANSICIONES ENTRE SECCIONES
+    · La salida del hero ligada al scroll (el contenido sube y se apaga y el
+      metal baja más despacio) da continuidad hacia Precios.
+    · .scroll-drift: las luces de fondo de «Sobre MabuDev», Proyectos y
+      Contacto se desplazan a otra velocidad que el contenido mientras se
+      recorre la página (parallax de scroll sin JS).
+    · Los separadores se dibujan, y luego los recorre un pulso de luz.
+
+  CONTADORES (sección 9) y TARJETAS (sección 10).
+
+  MICROINTERACCIONES
+    · Botones (.btn): elevación de 2 px en hover (propiedad translate, que no
+      interfiere con el transform del botón magnético), presión al hacer
+      clic (scale .97) y los reflejos y bordes existentes. Disabled: sin
+      elevación, opacidad .6 y cursor not-allowed. Foco: contorno cian
+      visible (:focus-visible global).
+    · .link-anim: subrayado que se dibuja de izquierda a derecha en hover y
+      en foco (enlaces del pie, correo de contacto, «Ver caso completo»).
+    · .icon-pop: los iconos de redes giran y crecen un poco.
+    · Chips y botones de redes y de evidencia: elevación de 1–2 px.
+    · No se usan cursores personalizados.
+
+
+8. FUNCIONAMIENTO DEL HERO INTERACTIVO
+--------------------------------------------------------------------------------
+  Archivo: src/components/sections/Hero.jsx (+ index.css «HERO»).
+
+  Campo del cursor: usePointerField (src/hooks/usePointerField.js, ya
+  existente) interpola la posición del ratón con lerp en un bucle rAF que se
+  detiene al converger. Escribe --px/--py (de -1 a 1) en <section.hero>. Al
+  salir el cursor, los valores vuelven poco a poco al reposo (medido: 0,35 a
+  los 150 ms y 0,05 a los 2,6 s). React no se re-renderiza.
+
+  Capas (cada una con su intensidad --depth, en px):
+    fondo  → halos de luz 34 / -22 / 48 y rejilla en perspectiva (fija)
+    medio  → metal líquido WebGL -16; elementos flotantes ±18…44
+    frente → título -10 con inclinación 3D (rotateX ±2,5°, rotateY ±3°)
+             y tarjeta de credenciales 14
+  El signo hace que unas capas acompañen al cursor y otras vayan en contra,
+  lo que da la sensación de profundidad. Párrafo, botones y kicker no se
+  mueven: tienen que poder leerse y pulsarse.
+
+  Elementos flotantes (HeroFloaters): chips de código (</>, { }, =>), un
+  anillo, un rombo, una cruz y una rejilla de puntos. Son 7 en escritorio y
+  3 en móvil. Cada uno combina:
+    · transform  → parallax del cursor (.depth)
+    · translate/rotate → flotación orgánica en bucle (@keyframes float),
+      con duración y desfase propios para que no vayan sincronizados.
+  Se renderizan después del metal, así que los que lo cruzan quedan en
+  primer plano.
+
+  Tipografía: «Software» entra carácter a carácter y «que se mide,» palabra a
+  palabra, subiendo desde la máscara de su línea. Después vienen «no que se
+  promete.» y el tachado, y a continuación el párrafo, los botones, las
+  credenciales y la marquesina. La secuencia dura unos 1,6 s y no bloquea
+  la lectura. Accesibilidad: el <h1> lleva aria-label con la frase completa
+  y las piezas divididas son aria-hidden. El HTML prerenderizado conserva el
+  texto plano para el SEO.
+
+  Salida por scroll: .hero-exit (contenido) sube 12vh, escala a .97 y baja su
+  opacidad; .hero-exit-orb (metal) baja 14vh. Usa animation-timeline:
+  view(), solo en navegadores compatibles y sin movimiento reducido.
+
+  Ahorro: usePauseWhenHidden marca el hero con data-paused cuando sale de
+  pantalla y se pausan flotantes, halos, anillos, marquesina y punto
+  pulsante. El metal WebGL ya pausaba su bucle por sí solo.
+
+  Táctil y tablet: sin cursor, usePointerField no se activa (solo con
+  (hover: hover) and (pointer: fine)). En su lugar los halos derivan
+  despacio (@keyframes halo-drift) y quedan 3 flotantes con movimiento
+  propio. Una tablet con trackpad recibe el parallax completo.
+
+
+9. FUNCIONAMIENTO DE LOS CONTADORES
+--------------------------------------------------------------------------------
+  A) CountUpText — src/components/ui/CountUpText.jsx
+     · Recibe un texto ("Peso de página en móvil: 821 → 237 KiB (−71.1 %)")
+       y detecta sus cifras respetando su formato: punto decimal y miles con
+       espacio ("4 000"). Prefijos, sufijos, signos y símbolos (−, %, →,
+       KiB) quedan como texto.
+     · El HTML prerenderizado y los lectores de pantalla reciben siempre el
+       texto final (copia sr-only); la versión animada es aria-hidden.
+     · En el navegador cada cifra se pone a 0. Al entrar en pantalla
+       (observeOnce) cuenta hasta su valor con easeOutExpo en 1,6 s y 140 ms
+       de escalonado entre cifras. El último frame escribe el texto original,
+       así que termina exactamente en el dato.
+     · Escribe directamente en el DOM (textContent): no re-renderiza React
+       por frame.
+     · Cada cifra reserva el ancho de su valor final (.count-slot con una
+       copia invisible), así el texto no salta mientras cuenta.
+     · Se ejecuta una sola vez por carga de página. Con movimiento reducido
+       o modo ligero muestra el valor final directamente.
+     Uso:
+     · «Sobre MabuDev» — 4 cifras de impacto: 6 proyectos, 14 tecnologías,
+       −98 % de consultas SQL (Maison Noir, 157 → 3) y Lighthouse 100.
+       Las tres primeras se CALCULAN a partir de src/data/projects.js
+       (FEATURED_PROJECTS.length), src/data/site.js (STACK.length) y
+       src/data/metrics.js (mejor mejora), por lo que no pueden
+       desincronizarse de los datos. "100" y su texto están tomados
+       literalmente de los resultados de Plan Gestor Task. No se inventó
+       ninguna cifra.
+     · Proyectos: la línea de resultado de cada pieza.
+
+  B) useCountUp — src/hooks/useCountUp.js (consola de métricas)
+     · El % de mejora cuenta desde 0 la primera vez que la consola entra en
+       pantalla; después anima de un valor a otro al cambiar de pestaña.
+     · Usa estado de React durante la animación (1,4 s): es un componente
+       pequeño y aislado, y su coste se midió como despreciable.
+     · Las barras «antes / después» crecen desde 0 al revelarse.
+
+
+10. FUNCIONAMIENTO DE LAS TARJETAS
+--------------------------------------------------------------------------------
+  Archivo: src/components/ui/GlowCard.jsx (+ index.css «Tarjetas
+  interactivas»). Se usa en Servicios y en Precios.
+
+  Estructura:
+    <li.glow-card data-reveal style="--tint">   ← cursor (--mx/--my) y entrada
+      <span.glow-card-aura/>                    ← luz difuminada detrás
+      <div.glow-card-body.card.spotlight>       ← la tarjeta
+  El aura es hermana de la tarjeta (no un hijo), así puede quedar detrás y
+  sobresalir por los bordes.
+
+  Hover (solo con ratón):
+    · La tarjeta escala a 1.025 (0,7 s, ease-out-expo).
+    · Aura: gradiente radial del color de la tarjeta (CARD_TINTS: cian, azul,
+      violeta del espectro de la marca) con blur de 38 px y opacidad .7.
+      Sigue ligeramente al cursor y aparece y desaparece en 0,8 s.
+    · Sombra profunda teñida con el color de la tarjeta y borde con un brillo
+      sutil del mismo tono.
+    · Luz y borde iluminado bajo el cursor (.spotlight, ya existente).
+    · Título, descripción y lista suben 3 px, escalonados 45 ms.
+    · El icono sube, gira -6° y proyecta luz de su color.
+  Teclado: con el foco dentro (enlaces de evidencia, botón de plan) se
+  enciende el aura y el borde, sin escalar.
+  Táctil: un resplandor tenue (.16) al entrar en pantalla y una respuesta de
+  presión (scale .985) al tocar.
+  Funcionalidad intacta: los enlaces de evidencia (#proyecto-…) y los
+  botones de los planes (prefillContact + #contacto) funcionan igual que
+  antes.
+
+
+11. OPTIMIZACIONES APLICADAS
+--------------------------------------------------------------------------------
+  · Solo se animan transform, translate, rotate, scale, opacity y clip-path
+    (no hay reflows por frame). La única propiedad no compositable es el
+    clip-path del revelado de imágenes, que se ejecuta una sola vez.
+  · Ningún listener nuevo de mousemove a nivel de documento. El cursor del
+    hero reutiliza el bucle rAF existente, que se detiene al converger.
+  · Un único IntersectionObserver compartido para reveal y contadores; cada
+    elemento se deja de observar al activarse.
+  · Limpieza: todos los efectos cancelan rAF y desconectan o dejan de
+    observar al desmontarse (verificado con el doble montaje de
+    StrictMode).
+  · Pausa de las animaciones infinitas del hero fuera de pantalla.
+  · Modo .lite (equipos con ≤ 4 núcleos o ≤ 4 GB, o ahorro de datos): sin
+    flotantes, aura, deriva por scroll ni salida del hero; contadores
+    directos al valor final.
+  · prefers-reduced-motion: sin parallax, flotación, salida por scroll ni
+    conteo. Todo el contenido visible desde el primer momento.
+
+
+12. VALIDACIONES REALIZADAS / PRUEBAS EJECUTADAS
+--------------------------------------------------------------------------------
+  Herramientas: npm run lint (oxlint), npm run build (build de producción +
+  SSR + prerender), vite preview y Chrome headless controlado por el
+  protocolo DevTools (CDP) con un script de pruebas propio que simula ratón,
+  scroll, teclado, táctil y preferencias de movimiento.
+
+  Resultados:
+  [OK] oxlint: 0 errores, 0 advertencias.
+  [OK] Build de producción y prerender correctos.
+  [OK] Hero: el cursor actualiza --px/--py (≈0,75 / 0,23 en la prueba).
+  [OK] Hero: el título se inclina y desplaza; el metal (-12 px) y los
+       flotantes (+30 px) se mueven con intensidades distintas.
+  [OK] Hero: al salir el cursor, vuelve suavemente al reposo.
+  [OK] Hero: la salida por scroll reduce la opacidad y desplaza el contenido.
+  [OK] Hero: las animaciones infinitas se pausan fuera de pantalla.
+  [OK] Contadores: 0|0|0|0 antes de verse → valores intermedios (5|12|83|84)
+       → finales 6|14|98|100, idénticos al dato.
+  [OK] Cifras de proyectos: terminan en 100, 821, 237, 71.1, 159, 115, 44,
+       84, 96 y 4 000 (con el separador de miles original).
+  [OK] Servicios: escala none → 1.025, aura 0 → .7 y vuelta a 0 al salir;
+       la luz sigue al cursor y el título sube 3 px.
+  [OK] Scroll: 53/53 elementos [data-reveal] revelados al recorrer la página;
+       0 se reinician al volver arriba (tras corregir Proceso).
+  [OK] Teclado: el foco avanza con Tab y tiene contorno visible.
+  [OK] Móvil 390×844 táctil: (hover: none), 3 flotantes, halos con deriva,
+       sin scroll horizontal y todo se revela.
+  [OK] Tablet 820×1180: sin scroll horizontal.
+  [OK] Movimiento reducido: 0 elementos ocultos sin hacer scroll, cifras
+       finales, sin animación de salida ni flotación.
+  [OK] Modo ligero: sin aura ni flotantes, cifras finales.
+  [OK] Consola del navegador: 0 errores y 0 advertencias en escritorio,
+       móvil, tablet, movimiento reducido y modo ligero.
+  [OK] Rendimiento: heap de JS ≈ 3,4–3,9 MB, 0 relayouts forzados durante la
+       interacción medida.
+  Revisión visual: capturas de hero (escritorio y móvil), contadores, hover
+  de servicios y proyectos. Se ajustaron la posición de los flotantes en
+  móvil (no tapan el texto) y la intensidad del aura (visible pero
+  contenida).
+
+
+13. PROBLEMAS ENCONTRADOS
+--------------------------------------------------------------------------------
+  · Process.jsx: React borraba .is-visible al re-renderizar (corregido; ver
+    diagnóstico).
+  · Los flotantes quedaban detrás del metal (mismo z-index, antes en el
+    DOM): se movieron después para que hagan de primer plano.
+  · El aura de las tarjetas quedaba casi toda oculta tras la tarjeta opaca:
+    ahora sobresale por los bordes.
+  · Nota de pruebas: Chrome headless en este equipo hereda
+    prefers-reduced-motion: reduce de Windows (efectos de animación
+    desactivados). Las pruebas de movimiento completo se ejecutaron
+    emulando "no-preference". Si en tu Windows tienes desactivados los
+    efectos de animación, verás la versión reducida a propósito.
+
+
+14. LIMITACIONES PENDIENTES
+--------------------------------------------------------------------------------
+  · La salida del hero y la deriva de las luces por scroll usan
+    animation-timeline (Chrome/Edge 115+, Safari 26+). Firefox, de momento,
+    muestra esas dos partes estáticas; el resto funciona igual.
+  · Aún no hay CSP en el despliegue. Si se añade una, el script inline de
+    index.html (detección de .js/.lite) necesitará un hash sha256 o moverse
+    a un archivo; ninguna animación nueva añade requisitos de CSP.
+  · El script de pruebas CDP no consiguió capturar la imagen de tablet en
+    headless (timeout del protocolo); las comprobaciones numéricas de tablet
+    sí se ejecutaron. Conviene revisar la tablet en un dispositivo real.
+  · Lighthouse no se ejecutó en esta sesión. Se recomienda una pasada en
+    producción para confirmar las métricas de carga.
+  · Pendientes previos del proyecto (sin cambios): foto en SITE.photo,
+    SITE_URL en .env, demo de Snake IA caída.
+
+
+15. FIGURA LIQUID GLASS DEL HERO (segunda iteración)
+--------------------------------------------------------------------------------
+  Archivo: src/components/ui/LiquidMetal.jsx (+ index.css «.metal-fallback»).
+
+  Investigación previa:
+  · Qué es: un shader WebGL propio (un único fragment shader sobre un
+    triángulo que cubre el canvas), con un campo de metaballs. No es una
+    imagen, ni SVG, ni Three.js, ni un modelo 3D.
+  · Por qué parecía estática: Windows de este equipo tiene desactivados los
+    «Efectos de animación» (SPI_GETCLIENTAREAANIMATION = False) y el
+    navegador lo traduce en prefers-reduced-motion: reduce. Con esa
+    preferencia el shader antiguo congelaba el tiempo y pintaba un solo
+    frame. En modo .lite ni siquiera arrancaba WebGL (gota CSS estática).
+  · Eventos: el contenedor tiene pointer-events: none y z-index -10 (correcto:
+    no bloquea nada). El cursor se escuchaba en la sección, pero en
+    coordenadas de todo el hero y solo atraía una gota: no había deformación
+    local ni ondas.
+
+  Movimiento autónomo (idle):
+  · Deformación del dominio con tres capas de ondas de frecuencias no
+    múltiplos entre sí + 5 gotas que orbitan y "respiran" con fases y ritmos
+    distintos → la silueta nunca repite un ciclo evidente.
+  · Ondulación interna: un relieve fino que solo altera las normales, por lo
+    que los reflejos y la película iridiscente se desplazan por dentro.
+  · La luz especular orbita despacio aunque no haya cursor.
+
+  Interacción (ratón y táctil):
+  · Coordenadas propias de la figura (getBoundingClientRect del canvas, con
+    las transformaciones del parallax ya aplicadas).
+  · Cercanía (0..1): empieza a reaccionar al acercarse (radio 1.0) y es máxima
+    encima (radio 0.3). Sube en ~0,25 s y baja en ~0,6 s → sin saltos.
+  · Ondas: cada vez que el cursor recorre 0,035 unidades sobre la figura se
+    emite una onda (búfer circular de 10, fuerza según la velocidad). Cada
+    onda es un paquete que avanza (0,42 u/s), se amortigua con la edad y deja
+    anillos de color en la película iridiscente.
+  · Hundimiento bajo el cursor y atracción: la superficie se estira hacia él
+    con retraso (posición interpolada lenta), como un líquido viscoso.
+  · Los reflejos del entorno giran hacia el cursor y la luz lo sigue.
+  · Mientras se agita, la sustancia fluye un 50 % más deprisa.
+  · Al salir, la cercanía vuelve a 0 y las ondas se extinguen solas (≤ 3,2 s).
+  · Táctil: touchstart/touchmove pasivos sobre la sección (intensidad 0,6).
+    Nunca se llama a preventDefault → el scroll no se bloquea (verificado:
+    el gesto desplazó la página 166 px y generó ondas).
+
+  Rendimiento y robustez:
+  · Recursos WebGL creados una vez; por frame solo se suben uniforms.
+  · El relieve (bucle de ondas) solo se calcula cerca de la superficie.
+  · Resolución interna: 0,75× (ratón), 0,55× (táctil), 0,42× (modo .lite),
+    con DPR máximo 1,5. Modo .lite y movimiento reducido: 30 fps.
+  · Pausa fuera de pantalla (IntersectionObserver) y con la pestaña oculta.
+  · Limpieza completa: rAF, observers, listeners y buffer/programa/shaders.
+  · Tope de pendiente en las normales para evitar puntos negros en los
+    pliegues entre gotas.
+  · Sin WebGL: la gota CSS (.metal-fallback) ahora deforma su contorno
+    (border-radius) y gira levemente con ritmos distintos.
+  · Movimiento reducido: la sustancia sigue viva pero al 30 % de velocidad y
+    SIN reaccionar al cursor (sin ondas ni atracción).
+
+  Validación (Chrome real con la GPU del equipo, Intel UHD Graphics, y un
+  script CDP que compara capturas con sharp):
+  [OK] WebGL activo, 61 fps durante la interacción.
+  [OK] Se mueve sin interacción (diferencia media entre capturas a 1,5 s: 24).
+  [OK] El cursor genera ondas y deformación localizadas (cambio local 51
+       frente a 12 en reposo).
+  [OK] Al salir, recupera su movimiento natural (15 frente a 12 en reposo).
+  [OK] No bloquea: el botón y el título reciben el clic sobre la figura.
+  [OK] Móvil: WebGL activo, ondas táctiles y el scroll no se bloquea.
+  [OK] Movimiento reducido: se mueve despacio y no aparecen ondas.
+  [OK] Consola sin errores ni advertencias.
+  Peso: +1,8 KB gzip de JS respecto a la versión anterior de la figura.
+
+  Para ver la experiencia completa en este equipo: Configuración de Windows →
+  Accesibilidad → Efectos visuales → «Efectos de animación» activado (o en
+  DevTools → Rendering → prefers-reduced-motion: no-preference).
+
+
+16. INSTRUCCIONES PARA EJECUTAR Y COMPILAR
+--------------------------------------------------------------------------------
+  Requisitos: Node.js >= 20.19.
+
+  npm install            # instala dependencias (genera el cliente Prisma)
+  npm run dev            # desarrollo en http://localhost:5173
+  npm run dev:api        # (opcional) API de leads en el puerto 3001
+  npm run lint           # oxlint
+  npm run build          # build de producción + SSR + prerender → dist/
+  npm run preview        # sirve dist/ en http://localhost:4173
+  npm start              # servidor Fastify: API + dist/ (producción)
+
+  Para probar el movimiento reducido: DevTools → Rendering → «Emulate CSS
+  media feature prefers-reduced-motion». Para el modo ligero: añade la clase
+  "lite" a <html> desde DevTools.
+================================================================================

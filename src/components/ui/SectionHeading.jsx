@@ -1,13 +1,15 @@
 // Encabezado de sección editorial: índice + etiqueta en mono, título grande
 // (admite nodos para destacar palabras con .text-display) y descripción.
+// Entra escalonado (data-reveal="stagger"): etiqueta → título → descripción,
+// y el trazo de la etiqueta se dibuja al aparecer.
 export function SectionHeading({ id, index, eyebrow, title, description, align = 'left', className = '' }) {
   const alignment = align === 'center' ? 'mx-auto text-center items-center' : ''
 
   return (
-    <div data-reveal className={`flex max-w-3xl flex-col gap-5 ${alignment} ${className}`}>
+    <div data-reveal="stagger" className={`flex max-w-3xl flex-col gap-5 ${alignment} ${className}`}>
       <p className="eyebrow inline-flex items-center gap-3">
         {index && <span className="text-subtle">({index})</span>}
-        <span aria-hidden="true" className="h-px w-8 bg-gradient-to-r from-accent to-violet" />
+        <span aria-hidden="true" className="reveal-line h-px w-8 bg-gradient-to-r from-accent to-violet" />
         {eyebrow}
       </p>
       <h2 id={id} className="text-[2.1rem] leading-[1.02] font-semibold tracking-[-0.035em] sm:text-5xl lg:text-[3.6rem]">
@@ -18,11 +20,13 @@ export function SectionHeading({ id, index, eyebrow, title, description, align =
   )
 }
 
-// Separador ambiental entre secciones: línea fina con un pulso de luz.
+// Separador ambiental entre secciones: la línea se dibuja al entrar en
+// pantalla y después la recorre un pulso de luz. Une visualmente una sección
+// con la siguiente.
 export function Divider({ delay = 0 }) {
   return (
     <div aria-hidden="true" className="container-page">
-      <div className="divider" style={{ '--delay': `${delay}s` }} />
+      <div data-reveal="line" className="divider" style={{ '--delay': `${delay}s` }} />
     </div>
   )
 }

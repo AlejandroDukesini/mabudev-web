@@ -1,28 +1,13 @@
 import { useEffect } from 'react'
+import { observeOnce } from '../lib/motion'
 
-// Un único IntersectionObserver para todos los elementos con [data-reveal].
-// Al entrar en pantalla reciben .is-visible y dejan de observarse.
+// Todos los elementos con [data-reveal] reciben .is-visible la primera vez que
+// entran en pantalla y dejan de observarse (la animación no se repite al
+// subir y bajar). Si el JS falla, el CSS los muestra igualmente a los 2.5 s.
 export function useReveal() {
   useEffect(() => {
     const elements = document.querySelectorAll('[data-reveal]:not(.is-visible)')
-
-    if (!('IntersectionObserver' in window)) {
-      elements.forEach((el) => el.classList.add('is-visible'))
-      return
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue
-          entry.target.classList.add('is-visible')
-          observer.unobserve(entry.target)
-        }
-      },
-      { rootMargin: '0px 0px -8% 0px', threshold: 0.12 },
-    )
-
-    elements.forEach((el) => observer.observe(el))
-    return () => observer.disconnect()
+    const stops = [...elements].map((el) => observeOnce(el, (target) => target.classList.add('is-visible')))
+    return () => stops.forEach((stop) => stop())
   }, [])
 }

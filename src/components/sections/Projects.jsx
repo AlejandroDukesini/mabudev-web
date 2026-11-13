@@ -24,11 +24,11 @@ export function Projects() {
     <section id="proyectos" aria-labelledby="projects-title" className="relative isolate overflow-x-clip py-24 sm:py-32">
       <div
         aria-hidden="true"
-        className="hero-glow pointer-events-none absolute top-40 right-[-20%] -z-10 h-[50rem] w-[50rem] max-w-[140vw] bg-[radial-gradient(closest-side,rgb(160_123_255/0.1),transparent)]"
+        className="hero-glow scroll-drift pointer-events-none absolute top-40 right-[-20%] -z-10 h-[50rem] w-[50rem] max-w-[140vw] bg-[radial-gradient(closest-side,rgb(160_123_255/0.1),transparent)]"
       />
       <div
         aria-hidden="true"
-        className="hero-glow pointer-events-none absolute bottom-60 left-[-20%] -z-10 h-[46rem] w-[46rem] max-w-[140vw] bg-[radial-gradient(closest-side,rgb(76_116_255/0.1),transparent)]"
+        className="hero-glow scroll-drift pointer-events-none absolute bottom-60 left-[-20%] -z-10 h-[46rem] w-[46rem] max-w-[140vw] bg-[radial-gradient(closest-side,rgb(76_116_255/0.1),transparent)]"
       />
 
       <div className="container-page">

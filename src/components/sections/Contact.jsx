@@ -11,14 +11,14 @@ export function Contact() {
     <section id="contacto" aria-labelledby="contact-title" className="relative isolate overflow-hidden py-24 sm:py-32">
       <div
         aria-hidden="true"
-        className="hero-glow absolute bottom-[-18rem] left-1/2 -z-10 h-[36rem] w-[min(64rem,140vw)] -translate-x-1/2 bg-[radial-gradient(closest-side,rgb(76_116_255/0.16),rgb(160_123_255/0.06)_50%,transparent)]"
+        className="hero-glow scroll-drift absolute bottom-[-18rem] left-1/2 -z-10 h-[36rem] w-[min(64rem,140vw)] -translate-x-1/2 bg-[radial-gradient(closest-side,rgb(76_116_255/0.16),rgb(160_123_255/0.06)_50%,transparent)]"
       />
 
       <div className="container-page grid gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
         <div data-reveal>
           <p className="eyebrow inline-flex items-center gap-3">
             <span className="text-subtle">(06)</span>
-            <span aria-hidden="true" className="h-px w-8 bg-gradient-to-r from-accent to-violet" />
+            <span aria-hidden="true" className="reveal-line h-px w-8 bg-gradient-to-r from-accent to-violet" />
             Contacto
           </p>
           <h2 id="contact-title" className="mt-5 text-[2.6rem] leading-[1] font-semibold tracking-[-0.04em] sm:text-6xl lg:text-7xl">
@@ -50,7 +50,7 @@ export function Contact() {
               {SOCIAL_LINKS.map((social) => (
                 <li key={social.id}>
                   <SocialLink href={social.href} label={social.label}>
-                    <SocialIcon id={social.id} className="size-4" />
+                    <SocialIcon id={social.id} className="icon-pop size-4" />
                   </SocialLink>
                 </li>
               ))}
@@ -85,8 +85,8 @@ function CopyEmail() {
         href={`mailto:${SITE.email}`}
         className="inline-flex min-h-11 items-center gap-2.5 text-lg font-medium break-all transition-colors hover:text-accent"
       >
-        <Mail className="size-5 shrink-0 text-accent" aria-hidden="true" />
-        {SITE.email}
+        <Mail className="icon-pop size-5 shrink-0 text-accent" aria-hidden="true" />
+        <span className="link-anim">{SITE.email}</span>
       </a>
       <button
         type="button"
@@ -106,7 +106,7 @@ function SocialLink({ href, label, children }) {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line px-4 text-sm text-muted transition-colors hover:border-accent/50 hover:text-accent"
+      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line px-4 text-sm text-muted transition-[color,border-color,translate] duration-300 hover:-translate-y-0.5 hover:border-accent/50 hover:text-accent active:translate-y-0"
     >
       {children}
       {label}

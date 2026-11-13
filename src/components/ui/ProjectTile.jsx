@@ -1,5 +1,6 @@
 import { ArrowUpRight, Plus } from 'lucide-react'
 import { useTileMotion } from '../../hooks/useTileMotion'
+import { CountUpText } from './CountUpText'
 import { GitHubIcon } from './BrandIcons'
 import { SnakePreview } from './SnakePreview'
 
@@ -98,7 +99,7 @@ export function ProjectTile({ project, index, onOpen }) {
           <span className="text-accent" aria-hidden="true">
             ▸{' '}
           </span>
-          {project.results[0]}
+          <CountUpText text={project.results[0]} />
         </p>
       </div>
 
@@ -110,7 +111,7 @@ export function ProjectTile({ project, index, onOpen }) {
           onClick={open}
           className="group/link inline-flex min-h-11 items-center gap-2 text-sm font-medium text-fg transition-colors hover:text-accent"
         >
-          Ver caso completo
+          <span className="link-anim">Ver caso completo</span>
           <span className="sr-only">de {project.title}</span>
           <Plus className="size-4 transition-transform duration-500 ease-(--ease-out-expo) group-hover/link:rotate-90" aria-hidden="true" />
         </button>
